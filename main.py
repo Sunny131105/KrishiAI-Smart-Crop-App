@@ -34,7 +34,7 @@ if st.button("🔍 Recommend Crop"):
     if land_acres <= 0:
         st.error("⚠️ Please enter valid land acres")
     else:
-        crop = helper.recommend_crop(n, p, k, temp, humidity, ph)
+        crop = helper.recommend_crop(n, p, k, temp, humidity, ph, region, land_acres, farmer_name)
         st.success(f"✅ Recommended Crop for {farmer_name} ({region}): **{crop.capitalize()}**")
 
         # Financial analysis

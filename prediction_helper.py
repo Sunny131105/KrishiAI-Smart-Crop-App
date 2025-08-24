@@ -28,12 +28,14 @@ class PredictionHelper:
             "bajra": {"cost_per_acre": 10000, "revenue_per_acre": 22000},
         }
 
-    def recommend_crop(self, n, p, k, temp, humidity, ph, region=None, land_acres=1):
+    def recommend_crop(self, n, p, k, temp, humidity, ph, region=None, land_acres=1, farmer_name=None):
         """
-        Recommend crop dynamically. Every parameter affects the outcome.
+        Recommend crop dynamically. Farmer name is metadata only and does not affect outcome.
         """
-        scores = {}
+        # Seed random with environmental/soil parameters (farmer_name excluded!)
+        random.seed((n, p, k, temp, humidity, ph, str(region), land_acres))
 
+        scores = {}
         for crop in self.crop_data.keys():
             score = 0
 
@@ -71,7 +73,7 @@ class PredictionHelper:
                 if "West" in region and crop in ["cotton", "bajra", "maize"]:
                     score -= 10
 
-            # Land size effect: high-value crops only if land is big
+            # Land size effect
             if land_acres > 5 and crop in ["sugarcane", "cotton", "maize"]:
                 score -= 10
             if land_acres < 2 and crop in ["apple", "cardamom", "coffee"]:
@@ -81,7 +83,7 @@ class PredictionHelper:
 
         # Pick crop with minimum score (best fit)
         recommended = min(scores, key=scores.get)
-        return recommended
+        return recommended   # ✅ Always string
 
     def financial_analysis(self, crop, land_acres):
         """Return financial stats for a given crop & land size."""
