@@ -28,64 +28,63 @@ class PredictionHelper:
             "bajra": {"cost_per_acre": 10000, "revenue_per_acre": 22000},
         }
 
-def recommend_crop(self, n, p, k, temp, humidity, ph, region=None, land_acres=1, farmer_name=None):
-    """
-    Recommend crop dynamically. Farmer name is metadata only and does not affect outcome.
-    """
-    # ✅ Fix: convert tuple into string (or use hash)
-    seed_value = f"{n}_{p}_{k}_{temp}_{humidity}_{ph}_{region}_{land_acres}"
-    random.seed(seed_value)
+    def recommend_crop(self, n, p, k, temp, humidity, ph, region=None, land_acres=1, farmer_name=None):
+        """
+        Recommend crop dynamically. Farmer name is metadata only and does not affect outcome.
+        """
+        # ✅ Deterministic seed
+        seed_value = f"{n}_{p}_{k}_{temp}_{humidity}_{ph}_{region}_{land_acres}"
+        random.seed(seed_value)
 
-    scores = {}
-    for crop in self.crop_data.keys():
-        score = 0
+        scores = {}
+        for crop in self.crop_data.keys():
+            score = 0
 
-        # Soil fertility impact
-        score += abs(n - random.randint(40, 120))
-        score += abs(p - random.randint(20, 80))
-        score += abs(k - random.randint(20, 100))
+            # Soil fertility impact
+            score += abs(n - random.randint(40, 120))
+            score += abs(p - random.randint(20, 80))
+            score += abs(k - random.randint(20, 100))
 
-        # Temperature impact
-        if crop in ["apple", "barley", "wheat"] and temp < 18:
-            score -= 20
-        if crop in ["rice", "banana", "sugarcane"] and temp > 22:
-            score -= 25
+            # Temperature impact
+            if crop in ["apple", "barley", "wheat"] and temp < 18:
+                score -= 20
+            if crop in ["rice", "banana", "sugarcane"] and temp > 22:
+                score -= 25
 
-        # Humidity impact
-        if humidity > 65 and crop in ["rice", "banana", "sugarcane"]:
-            score -= 20
-        if humidity < 40 and crop in ["wheat", "barley", "apple"]:
-            score -= 15
-
-        # pH sensitivity
-        if ph < 6.0 and crop in ["banana", "sugarcane", "cotton"]:
-            score -= 15
-        if ph > 7.5 and crop in ["apple", "barley", "wheat"]:
-            score -= 10
-
-        # Regional preference
-        if region:
-            if "North" in region and crop in ["wheat", "barley", "apple"]:
+            # Humidity impact
+            if humidity > 65 and crop in ["rice", "banana", "sugarcane"]:
+                score -= 20
+            if humidity < 40 and crop in ["wheat", "barley", "apple"]:
                 score -= 15
-            if "South" in region and crop in ["rice", "banana", "coffee"]:
+
+            # pH sensitivity
+            if ph < 6.0 and crop in ["banana", "sugarcane", "cotton"]:
                 score -= 15
-            if "East" in region and crop in ["jute", "rice", "sugarcane"]:
-                score -= 10
-            if "West" in region and crop in ["cotton", "bajra", "maize"]:
+            if ph > 7.5 and crop in ["apple", "barley", "wheat"]:
                 score -= 10
 
-        # Land size effect
-        if land_acres > 5 and crop in ["sugarcane", "cotton", "maize"]:
-            score -= 10
-        if land_acres < 2 and crop in ["apple", "cardamom", "coffee"]:
-            score -= 5
+            # Regional preference
+            if region:
+                if "North" in region and crop in ["wheat", "barley", "apple"]:
+                    score -= 15
+                if "South" in region and crop in ["rice", "banana", "coffee"]:
+                    score -= 15
+                if "East" in region and crop in ["jute", "rice", "sugarcane"]:
+                    score -= 10
+                if "West" in region and crop in ["cotton", "bajra", "maize"]:
+                    score -= 10
 
-        scores[crop] = score
+            # Land size effect
+            if land_acres > 5 and crop in ["sugarcane", "cotton", "maize"]:
+                score -= 10
+            if land_acres < 2 and crop in ["apple", "cardamom", "coffee"]:
+                score -= 5
 
-    # Pick crop with minimum score (best fit)
-    recommended = min(scores, key=scores.get)
-    return recommended
+            scores[crop] = score
 
+        # Pick crop with minimum score (best fit)
+        recommended = min(scores, key=scores.get)
+        return recommended
 
     def financial_analysis(self, crop, land_acres):
         """Return financial stats for a given crop & land size."""
