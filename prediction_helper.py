@@ -28,7 +28,7 @@ class PredictionHelper:
             "bajra": {"cost_per_acre": 10000, "revenue_per_acre": 22000},
         }
 
-    def recommend_crop(self, n, p, k, temp, humidity, ph, region=None, land_acres=1, farmer_name=None):
+def recommend_crop(self, n, p, k, temp, humidity, ph, region=None, land_acres=1, farmer_name=None):
     """
     Recommend crop dynamically. Farmer name is metadata only and does not affect outcome.
     """
@@ -85,6 +85,7 @@ class PredictionHelper:
     # Pick crop with minimum score (best fit)
     recommended = min(scores, key=scores.get)
     return recommended
+
 
     def financial_analysis(self, crop, land_acres):
         """Return financial stats for a given crop & land size."""
