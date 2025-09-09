@@ -28,12 +28,12 @@ class PredictionHelper:
             "bajra": {"cost_per_acre": 10000, "revenue_per_acre": 22000},
         }
 
-    def recommend_crop(self, n, p, k, temp, humidity, ph, region=None, land_acres=1, farmer_name=None):
+    def recommend_crop(self, n, p, k, temp, humidity, ph, rain, region=None, land_acres=1, farmer_name=None):
         """
         Recommend crop dynamically. Farmer name is metadata only and does not affect outcome.
         """
-        # ✅ Deterministic seed
-        seed_value = f"{n}_{p}_{k}_{temp}_{humidity}_{ph}_{region}_{land_acres}"
+        # ✅ Add rain in the random seed to ensure reproducibility
+        seed_value = f"{n}_{p}_{k}_{temp}_{humidity}_{ph}_{rain}_{region}_{land_acres}"
         random.seed(seed_value)
 
         scores = {}
@@ -62,6 +62,14 @@ class PredictionHelper:
                 score -= 15
             if ph > 7.5 and crop in ["apple", "barley", "wheat"]:
                 score -= 10
+
+            # 🌧️ Rainfall suitability
+            if rain < 500 and crop in ["rice", "sugarcane", "banana"]:
+                score += 30   # these crops need more water
+            if rain > 1200 and crop in ["wheat", "barley", "bajra"]:
+                score += 25   # these crops don’t like excess water
+            if 600 <= rain <= 1000 and crop in ["maize", "cotton", "coffee"]:
+                score -= 15   # good fit for moderate rainfall
 
             # Regional preference
             if region:
@@ -108,3 +116,4 @@ class PredictionHelper:
         """Return financial comparison of all crops."""
         results = [self.financial_analysis(crop, land_acres) for crop in self.crop_data.keys()]
         return pd.DataFrame(results)
+
