@@ -13,8 +13,8 @@ with st.expander("ℹ️ About this App", expanded=True):
     st.markdown("""
     ### This app helps farmers make **data-driven decisions** about what crop to grow by analyzing:
     - 👨‍🌾 **Farmer details** (region, land size)  
-    - 🌍 **Soil & environmental parameters** (NPK, temperature, humidity, pH)  
-    - 💰 **Financial analysis** (cost, revenue, net profit)  
+    - 🌍 **Soil & environmental parameters** (NPK, temperature, humidity, pH, rain)  
+    - 💰 **Financial analysis** (cost, revenue, net profit, subsidy)  
     - 🛡️ **Crop-specific safety guidelines**  
     - 🗺️ **Heatmap of suitable regions**  
 
@@ -153,6 +153,20 @@ crop_locations = {
     ]
 }
 
+# ---------------- Government Subsidies ----------------
+subsidies = {
+    "rice": 2000,       # ₹ per acre
+    "wheat": 1500,
+    "maize": 1200,
+    "sugarcane": 2500,
+    "cotton": 1800,
+    "banana": 2200,
+    "mango": 3000,
+    "potato": 1600,
+    "tomato": 1400,
+    "onion": 1300
+}
+
 # ---------------- Recommendation Section ----------------
 if st.button("🔍 Recommend Crop"):
     if land_acres <= 0:
@@ -164,6 +178,12 @@ if st.button("🔍 Recommend Crop"):
         # Financial analysis
         st.subheader("💰 Financial Analysis (Recommended Crop)")
         finance = helper.financial_analysis(crop, land_acres)
+
+        # Add subsidy to financial analysis
+        subsidy_amount = subsidies.get(crop.lower(), 0) * land_acres
+        finance["Government Subsidy"] = f"₹ {subsidy_amount:,.0f}"
+        finance["Net Profit (with Subsidy)"] = f"₹ {finance['Net Profit'] + subsidy_amount:,.0f}"
+
         st.json(finance)
 
         # Safety features
@@ -179,9 +199,14 @@ if st.button("🔍 Recommend Crop"):
 
         df = helper.all_crops_analysis(land_acres)
 
+        # Add subsidy column for all crops
+        df["Subsidy"] = df["Crop"].apply(lambda c: subsidies.get(c.lower(), 0) * land_acres)
+        df["Net Profit (with Subsidy)"] = df["Net Profit"] + df["Subsidy"]
+
         # Boost the recommended crop's value for emphasis
         df["Adjusted_Net_Profit"] = df.apply(
-            lambda row: row["Net Profit"] * 1.5 if row["Crop"].lower() == crop.lower() else row["Net Profit"] * 0.7,
+            lambda row: row["Net Profit (with Subsidy)"] * 1.5 if row["Crop"].lower() == crop.lower()
+            else row["Net Profit (with Subsidy)"] * 0.7,
             axis=1
         )
 
@@ -190,7 +215,7 @@ if st.button("🔍 Recommend Crop"):
             df,
             names="Crop",
             values="Adjusted_Net_Profit",
-            title=f"Net Profit Share (Recommended: {crop.capitalize()})",
+            title=f"Net Profit Share (with Subsidy, Recommended: {crop.capitalize()})",
             width=600,
             height=400,
             color="Crop",
@@ -203,13 +228,16 @@ if st.button("🔍 Recommend Crop"):
             df,
             x="Crop",
             y="Adjusted_Net_Profit",
-            title=f"Net Profit Comparison (Recommended: {crop.capitalize()})",
+            title=f"Net Profit Comparison (with Subsidy, Recommended: {crop.capitalize()})",
             width=600,
             height=400,
             color=df["Crop"].apply(lambda x: "Recommended" if x.lower() == crop.lower() else "Other"),
             color_discrete_map={"Recommended": "red", "Other": "gray"}
         )
         st.plotly_chart(bar)
+
+
+
 
         # ---------------- Heatmap Section ----------------
         st.subheader("🗺️ Crop Suitability Heatmap")
