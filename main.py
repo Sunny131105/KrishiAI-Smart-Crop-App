@@ -10,17 +10,90 @@ helper = PredictionHelper()
 
 st.set_page_config(page_title="🌾 Crop Recommendation System", layout="wide")
 
+# ---------------- Language Selection ----------------
+st.sidebar.header("🌐 Language Settings")
+language_options = {
+    "English (India)": "en-IN",
+    "Hindi": "hi-IN",
+    "Punjabi": "pa-IN",
+    "Marathi": "mr-IN",
+    "Tamil": "ta-IN",
+    "Telugu": "te-IN",
+    "Bengali": "bn-IN",
+    "Gujarati": "gu-IN"
+}
+selected_language = st.sidebar.selectbox("Choose Language", list(language_options.keys()))
+selected_lang_code = language_options[selected_language]
+
+# ---------------- Translations ----------------
+translations = {
+    "Farmer Name": {
+        "English (India)": "Farmer Name", "Hindi": "किसान का नाम", "Punjabi": "ਕਿਸਾਨ ਦਾ ਨਾਮ",
+        "Marathi": "शेतकऱ्याचे नाव", "Tamil": "விவசாயியின் பெயர்", "Telugu": "రైతు పేరు",
+        "Bengali": "কৃষকের নাম", "Gujarati": "ખેડૂતનું નામ"
+    },
+    "Region": {
+        "English (India)": "Region", "Hindi": "क्षेत्र", "Punjabi": "ਇਲਾਕਾ",
+        "Marathi": "प्रदेश", "Tamil": "பிராந்தியம்", "Telugu": "ప్రాంతం",
+        "Bengali": "অঞ্চল", "Gujarati": "વિસ્તાર"
+    },
+    "Total Acres of Land": {
+        "English (India)": "Total Acres of Land", "Hindi": "भूमि का कुल क्षेत्रफल", "Punjabi": "ਜਮੀਨ ਦੇ ਕੁੱਲ ਏਕੜ",
+        "Marathi": "एकूण जमीन (एकर)", "Tamil": "மொத்த நிலம் (ஏக்கர்)", "Telugu": "మొత్తం ఎకరాలు",
+        "Bengali": "মোট জমি (একর)", "Gujarati": "કુલ જમીન (એકર)"
+    },
+    "Nitrogen (N)": {
+        "English (India)": "Nitrogen (N)", "Hindi": "नाइट्रोजन (N)", "Punjabi": "ਨਾਈਟ੍ਰੋਜਨ (N)",
+        "Marathi": "नायट्रोजन (N)", "Tamil": "நைட்ரஜன் (N)", "Telugu": "నైట్రజన్ (N)",
+        "Bengali": "নাইট্রোজেন (N)", "Gujarati": "નાઈટ્રોજન (N)"
+    },
+    "Phosphorus (P)": {
+        "English (India)": "Phosphorus (P)", "Hindi": "फॉस्फोरस (P)", "Punjabi": "ਫਾਸਫੋਰਸ (P)",
+        "Marathi": "फॉस्फरस (P)", "Tamil": "பாஸ்பரஸ் (P)", "Telugu": "ఫాస్ఫరస్ (P)",
+        "Bengali": "ফসফরাস (P)", "Gujarati": "ફોસ્ફરસ (P)"
+    },
+    "Potassium (K)": {
+        "English (India)": "Potassium (K)", "Hindi": "पोटैशियम (K)", "Punjabi": "ਪੋਟਾਸਿਯਮ (K)",
+        "Marathi": "पोटॅशियम (K)", "Tamil": "பொட்டாசியம் (K)", "Telugu": "పొటాషియం (K)",
+        "Bengali": "পটাশিয়াম (K)", "Gujarati": "પોટેશિયમ (K)"
+    },
+    "Temperature (°C)": {
+        "English (India)": "Temperature (°C)", "Hindi": "तापमान (°C)", "Punjabi": "ਤਾਪਮਾਨ (°C)",
+        "Marathi": "तापमान (°C)", "Tamil": "வெப்பநிலை (°C)", "Telugu": "ఉష్ణోగ్రత (°C)",
+        "Bengali": "তাপমাত্রা (°C)", "Gujarati": "તાપમાન (°C)"
+    },
+    "Humidity (%)": {
+        "English (India)": "Humidity (%)", "Hindi": "आर्द्रता (%)", "Punjabi": "ਨਮੀ (%)",
+        "Marathi": "आर्द्रता (%)", "Tamil": "ஈரப்பதம் (%)", "Telugu": "ఆర్ద్రత (%)",
+        "Bengali": "আর্দ্রতা (%)", "Gujarati": "ભેજ (%)"
+    },
+    "Soil pH": {
+        "English (India)": "Soil pH", "Hindi": "मिट्टी का pH", "Punjabi": "ਮਿੱਟੀ ਦਾ pH",
+        "Marathi": "मातीचा pH", "Tamil": "மண்ணின் pH", "Telugu": "మట్టి pH",
+        "Bengali": "মাটির pH", "Gujarati": "માટીનું pH"
+    },
+    "Rainfall (mm)": {
+        "English (India)": "Rainfall (mm)", "Hindi": "वर्षा (mm)", "Punjabi": "ਵਰਖਾ (mm)",
+        "Marathi": "पर्जन्यमान (mm)", "Tamil": "மழைப்பொழிவு (mm)", "Telugu": "వర్షపాతం (mm)",
+        "Bengali": "বৃষ্টিপাত (mm)", "Gujarati": "વર્ષા (mm)"
+    }
+}
+
+def t(key):
+    """Get translated text for current language"""
+    return translations.get(key, {}).get(selected_language, key)
+
 # ---------------- Voice Input Function ----------------
-def get_voice_input():
+def get_voice_input(lang_code=selected_lang_code):
     recognizer = sr.Recognizer()
     mic = sr.Microphone()
     with mic as source:
-        st.info("🎤 Listening... Please speak clearly.")
+        st.info(f"🎤 Listening ({selected_language})... Please speak clearly.")
         recognizer.adjust_for_ambient_noise(source)
         audio = recognizer.listen(source, timeout=5, phrase_time_limit=10)
     try:
-        text = recognizer.recognize_google(audio, language="en-IN")
-        st.success(f"✅ You said: {text}")
+        text = recognizer.recognize_google(audio, language=lang_code)
+        st.success(f"✅ You said ({selected_language}): {text}")
         return text
     except sr.UnknownValueError:
         st.error("❌ Sorry, could not understand your speech. Try again.")
@@ -53,9 +126,9 @@ col1, col2 = st.columns(2)
 
 with col1:
     st.header("👨‍🌾 Farmer Information")
-    farmer_name = st.text_input("Farmer Name")
-    region = st.text_input("Region")
-    land_acres = st.number_input("Total Acres of Land", min_value=1, step=1)
+    farmer_name = st.text_input(t("Farmer Name"))
+    region = st.text_input(t("Region"))
+    land_acres = st.number_input(t("Total Acres of Land"), min_value=1, step=1)
 
     if st.button("🎤 Speak Farmer Name"):
         farmer_name = get_voice_input()
@@ -67,13 +140,13 @@ with col2:
     input_mode = st.radio("Choose Input Mode", ["Manual", "Voice"], horizontal=True)
 
     if input_mode == "Manual":
-        n = st.number_input("Nitrogen (N)", min_value=0)
-        p = st.number_input("Phosphorus (P)", min_value=0)
-        k = st.number_input("Potassium (K)", min_value=0)
-        temp = st.number_input("Temperature (°C)", min_value=-10.0, max_value=50.0, step=0.5)
-        humidity = st.number_input("Humidity (%)", min_value=0.0, max_value=100.0, step=0.5)
-        ph = st.number_input("Soil pH", min_value=0.0, max_value=14.0, step=0.1)
-        rain = st.number_input("Rainfall (mm)", min_value=0.0, step=0.5)
+        n = st.number_input(t("Nitrogen (N)"), min_value=0)
+        p = st.number_input(t("Phosphorus (P)"), min_value=0)
+        k = st.number_input(t("Potassium (K)"), min_value=0)
+        temp = st.number_input(t("Temperature (°C)"), min_value=-10.0, max_value=50.0, step=0.5)
+        humidity = st.number_input(t("Humidity (%)"), min_value=0.0, max_value=100.0, step=0.5)
+        ph = st.number_input(t("Soil pH"), min_value=0.0, max_value=14.0, step=0.1)
+        rain = st.number_input(t("Rainfall (mm)"), min_value=0.0, step=0.5)
     else:
         st.info("🎤 Use separate voice input buttons for each parameter")
         for param in ["n", "p", "k", "temp", "humidity", "ph", "rain"]:
@@ -82,6 +155,7 @@ with col2:
                 st.session_state[param] = val if val is not None else 0
             locals()[param] = st.session_state.get(param, 0)
             st.write(f"{param.upper()}: {locals()[param]}")
+
 
 # ---------------- Safety Guidelines ----------------
 safety_guidelines = {
