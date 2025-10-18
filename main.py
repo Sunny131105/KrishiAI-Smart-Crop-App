@@ -54,7 +54,7 @@ translations = {
     },
     "Potassium (K)": {
         "English (India)": "Potassium (K)", "Hindi": "पोटैशियम (K)", "Punjabi": "ਪੋਟਾਸਿਯਮ (K)",
-        "Marathi": "पोटॅशियम (K)", "Tamil": "பொட்டாசியம் (K)", "Telugu": "పొటాషియం (K)",
+        "Marathi": "पोटॅशિયમ (K)", "Tamil": "பொட்டாசியம் (K)", "Telugu": "పొటాషియం (K)",
         "Bengali": "পটাশিয়াম (K)", "Gujarati": "પોટેશિયમ (K)"
     },
     "Temperature (°C)": {
@@ -64,7 +64,7 @@ translations = {
     },
     "Humidity (%)": {
         "English (India)": "Humidity (%)", "Hindi": "आर्द्रता (%)", "Punjabi": "ਨਮੀ (%)",
-        "Marathi": "आर्द्रता (%)", "Tamil": "ஈரப்பதம் (%)", "Telugu": "ఆర్ద్రత (%)",
+        "Marathi": "आर्द्रতা (%)", "Tamil": "ஈரப்பதம் (%)", "Telugu": "ఆర్ద్రత (%)",
         "Bengali": "আর্দ্রতা (%)", "Gujarati": "ભેજ (%)"
     },
     "Soil pH": {
@@ -74,7 +74,7 @@ translations = {
     },
     "Rainfall (mm)": {
         "English (India)": "Rainfall (mm)", "Hindi": "वर्षा (mm)", "Punjabi": "ਵਰਖਾ (mm)",
-        "Marathi": "पर्जन्यमान (mm)", "Tamil": "மழைப்பொழிவு (mm)", "Telugu": "వర్షపాతం (mm)",
+        "Marathi": "पर्जন्यमान (mm)", "Tamil": "மழைப்பொழிவு (mm)", "Telugu": "వర్షపాతం (mm)",
         "Bengali": "বৃষ্টিপাত (mm)", "Gujarati": "વર્ષા (mm)"
     }
 }
@@ -110,7 +110,7 @@ def extract_number(text):
 with st.expander("ℹ️ About this App", expanded=True):
     st.markdown("""
     ### This app helps farmers make **data-driven decisions** about what crop to grow by analyzing:
-    - 👨‍🌾 **Farmer details** (region, land size)  
+    - 👨‍🌾 **Farmer details** (region, land size, state, previous crop, season)  
     - 🌍 **Soil & environmental parameters** (NPK, temperature, humidity, pH, rain)  
     - 💰 **Financial analysis** (cost, revenue, net profit, subsidy)  
     - 🛡️ **Crop-specific safety guidelines**  
@@ -130,6 +130,26 @@ with col1:
     region = st.text_input(t("Region"))
     land_acres = st.number_input(t("Total Acres of Land"), min_value=1, step=1)
 
+    # ✅ NEW: State Selection
+    states = [
+        "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh",
+        "Goa", "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka",
+        "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya",
+        "Mizoram", "Nagaland", "Odisha", "Punjab", "Rajasthan", "Sikkim",
+        "Tamil Nadu", "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand",
+        "West Bengal", "Others"
+    ]
+    state = st.selectbox("🏞️ Select State", states)
+
+    # ✅ NEW: Previous Crop Selection
+    prev_crop = st.selectbox("🌱 Previous Crop",
+                             ["None", "Rice", "Wheat", "Maize", "Sugarcane", "Cotton",
+                              "Banana", "Mango", "Potato", "Tomato", "Onion"])
+
+    # ✅ NEW: Season Selection
+    season = st.radio("🗓️ Select Season", ["Kharif", "Rabi", "Zaid"], horizontal=True)
+
+    # Voice buttons
     if st.button("🎤 Speak Farmer Name"):
         farmer_name = get_voice_input()
     if st.button("🎤 Speak Region"):
@@ -155,7 +175,6 @@ with col2:
                 st.session_state[param] = val if val is not None else 0
             locals()[param] = st.session_state.get(param, 0)
             st.write(f"{param.upper()}: {locals()[param]}")
-
 
 # ---------------- Safety Guidelines ----------------
 safety_guidelines = {
@@ -193,9 +212,13 @@ if st.button("🔍 Recommend Crop"):
     if land_acres <= 0:
         st.error("⚠️ Please enter valid land acres")
     else:
-        # Recommended Crop
-        crop = helper.recommend_crop(n, p, k, temp, humidity, ph, rain, region, land_acres, farmer_name)
-        st.success(f"✅ Recommended Crop for {farmer_name} ({region}): **{crop.capitalize()}**")
+        # Recommended Crop (pass new params too)
+        crop = helper.recommend_crop(
+            n, p, k, temp, humidity, ph, rain,
+            region, land_acres, farmer_name,
+            state=state, prev_crop=prev_crop, season=season
+        )
+        st.success(f"✅ Recommended Crop for {farmer_name} ({region}, {state}, {season} Season): **{crop.capitalize()}**")
 
         # Financial Analysis
         st.subheader("💰 Financial Analysis (Recommended Crop)")
@@ -216,23 +239,31 @@ if st.button("🔍 Recommend Crop"):
         # Financial Breakdown Charts
         st.subheader("📊 Financial Breakdown (All Crops, Highlighted Recommended)")
         df = helper.all_crops_analysis(land_acres)
+
+        # Add subsidy + net profit with subsidy
         df["Subsidy"] = df["Crop"].apply(lambda c: subsidies.get(c.lower(), 0) * land_acres)
         df["Net Profit (with Subsidy)"] = df["Net Profit"] + df["Subsidy"]
-        df["Adjusted_Net_Profit"] = df.apply(
-            lambda row: row["Net Profit (with Subsidy)"] * 1.5 if row["Crop"].lower() == crop.lower()
-            else row["Net Profit (with Subsidy)"] * 0.7, axis=1
-        )
 
-        pie = px.pie(df, names="Crop", values="Adjusted_Net_Profit",
-                     title=f"Net Profit Share (with Subsidy, Recommended: {crop.capitalize()})",
-                     width=600, height=400, color="Crop", color_discrete_sequence=px.colors.qualitative.Set3)
+        # For plotting
+        df["Adjusted_Net_Profit"] = df["Net Profit (with Subsidy)"]
+
+        # Pie chart
+        pie = px.pie(
+            df, names="Crop", values="Adjusted_Net_Profit",
+            title=f"Net Profit Share (with Subsidy, Recommended: {crop.capitalize()})",
+            width=600, height=400, color="Crop",
+            color_discrete_sequence=px.colors.qualitative.Set3
+        )
         st.plotly_chart(pie)
 
-        bar = px.bar(df, x="Crop", y="Adjusted_Net_Profit",
-                     title=f"Net Profit Comparison (with Subsidy, Recommended: {crop.capitalize()})",
-                     width=600, height=400,
-                     color=df["Crop"].apply(lambda x: "Recommended" if x.lower() == crop.lower() else "Other"),
-                     color_discrete_map={"Recommended": "red", "Other": "gray"})
+        # Bar chart
+        bar = px.bar(
+            df, x="Crop", y="Adjusted_Net_Profit",
+            title=f"Net Profit Comparison (with Subsidy, Recommended: {crop.capitalize()})",
+            width=600, height=400,
+            color=df["Crop"].apply(lambda x: "Recommended" if x.lower() == crop.lower() else "Other"),
+            color_discrete_map={"Recommended": "red", "Other": "gray"}
+        )
         st.plotly_chart(bar)
 
         # Crop Suitability Heatmap
