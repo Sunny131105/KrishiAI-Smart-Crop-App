@@ -28,59 +28,72 @@ class PredictionHelper:
             "bajra": {"cost_per_acre": 10000, "revenue_per_acre": 22000},
         }
 
-    def recommend_crop(self, n, p, k, temp, humidity, ph, rain, region=None, land_acres=1, farmer_name=None):
+    def recommend_crop(self, n, p, k, temp, humidity, ph, rain,
+                       region=None, land_acres=1, farmer_name=None,
+                       state=None, prev_crop=None, season=None):
         """
-        Recommend crop dynamically. Farmer name is metadata only and does not affect outcome.
+        Recommend crop dynamically based on soil, weather, location, and season.
+        Farmer name is metadata only.
         """
-        # ✅ Add rain in the random seed to ensure reproducibility
-        seed_value = f"{n}_{p}_{k}_{temp}_{humidity}_{ph}_{rain}_{region}_{land_acres}"
+        # ✅ Use all parameters in seed for reproducibility
+        seed_value = f"{n}_{p}_{k}_{temp}_{humidity}_{ph}_{rain}_{region}_{land_acres}_{state}_{prev_crop}_{season}"
         random.seed(seed_value)
 
         scores = {}
         for crop in self.crop_data.keys():
             score = 0
 
-            # Soil fertility impact
+            # Soil fertility
             score += abs(n - random.randint(40, 120))
             score += abs(p - random.randint(20, 80))
             score += abs(k - random.randint(20, 100))
 
-            # Temperature impact
+            # Temperature suitability
             if crop in ["apple", "barley", "wheat"] and temp < 18:
                 score -= 20
             if crop in ["rice", "banana", "sugarcane"] and temp > 22:
                 score -= 25
 
-            # Humidity impact
+            # Humidity
             if humidity > 65 and crop in ["rice", "banana", "sugarcane"]:
                 score -= 20
             if humidity < 40 and crop in ["wheat", "barley", "apple"]:
                 score -= 15
 
-            # pH sensitivity
+            # pH suitability
             if ph < 6.0 and crop in ["banana", "sugarcane", "cotton"]:
                 score -= 15
             if ph > 7.5 and crop in ["apple", "barley", "wheat"]:
                 score -= 10
 
-            # 🌧️ Rainfall suitability
+            # Rainfall suitability
             if rain < 500 and crop in ["rice", "sugarcane", "banana"]:
-                score += 30   # these crops need more water
+                score += 30
             if rain > 1200 and crop in ["wheat", "barley", "bajra"]:
-                score += 25   # these crops don’t like excess water
+                score += 25
             if 600 <= rain <= 1000 and crop in ["maize", "cotton", "coffee"]:
-                score -= 15   # good fit for moderate rainfall
+                score -= 15
 
-            # Regional preference
-            if region:
-                if "North" in region and crop in ["wheat", "barley", "apple"]:
+            # ✅ State factor (simplified)
+            if state:
+                if state in ["Punjab", "Haryana", "Uttar Pradesh"] and crop in ["wheat", "rice"]:
                     score -= 15
-                if "South" in region and crop in ["rice", "banana", "coffee"]:
+                if state in ["Maharashtra", "Gujarat"] and crop in ["cotton", "bajra"]:
                     score -= 15
-                if "East" in region and crop in ["jute", "rice", "sugarcane"]:
-                    score -= 10
-                if "West" in region and crop in ["cotton", "bajra", "maize"]:
-                    score -= 10
+                if state in ["Kerala", "Karnataka"] and crop in ["coffee", "banana"]:
+                    score -= 15
+
+            # ✅ Previous crop factor (avoid same crop)
+            if prev_crop and crop.lower() == prev_crop.lower():
+                score += 30  # discourage repeating same crop
+
+            # ✅ Season factor
+            if season == "Kharif" and crop in ["rice", "maize", "cotton", "sugarcane"]:
+                score -= 15
+            if season == "Rabi" and crop in ["wheat", "barley", "mustard", "chickpea"]:
+                score -= 15
+            if season == "Zaid" and crop in ["pumpkin", "cucumber", "bittergourd", "watermelon"]:
+                score -= 15
 
             # Land size effect
             if land_acres > 5 and crop in ["sugarcane", "cotton", "maize"]:
@@ -90,7 +103,7 @@ class PredictionHelper:
 
             scores[crop] = score
 
-        # Pick crop with minimum score (best fit)
+        # ✅ Pick best crop
         recommended = min(scores, key=scores.get)
         return recommended
 
@@ -116,4 +129,5 @@ class PredictionHelper:
         """Return financial comparison of all crops."""
         results = [self.financial_analysis(crop, land_acres) for crop in self.crop_data.keys()]
         return pd.DataFrame(results)
+
 
